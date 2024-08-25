@@ -1,1 +1,28 @@
+文字检测模型一般不会出现问题，仅有几点改进建议：
+adivse1：如果模型的识别效果不好，需要分两部分排除原因：
+查看文字检测模型的输出结果   查看文字识别模型的输出结果
+以此来发现模型准确率的问题（如果检测就出问题，识别效果当然会差。）
+
+quesion1：检测模型一般会出现检测的输出结果和识别可视化结果冲突：
+这个时候需要检查检测模型的超参数设置：
+
+parser.add_argument("--det_db_thresh", type=float, default=0.1)
+parser.add_argument("--det_db_box_thresh", type=float, default=0.1)
+parser.add_argument("--det_db_unclip_ratio", type=float, default=2) 
+parser.add_argument("--max_batch_size", type=int, default=10)
+parser.add_argument("--use_dilation", type=str2bool, default=True) 
+parser.add_argument("--det_db_score_mode", type=str, default="fast")
+det_db_thresh：DB输出的概率图中，得分大于该阈值的像素点才会被认为是文字像素点。那么如果你的模型专门用于文档、信纸之类的文件文字识别，该默认值可以调小。（不能无敌小，否则会对一些像素点过于敏感）
+det_db_box_thresh：检测结果边框内，所有像素点的平均得分大于该阈值时，该结果会被认为是文字区域。那么如果你的模型专门用于文档、信纸之类的文件文字识别，该默认值可以调小。
+det_db_unclip_ratio：Vatti clipping算法的扩张系数，使用该方法对文字区域进行扩张。如果结果中的框不能完全包围文字，那么就是此处的默认值太低。 同理框过于冗余就是太高了。
+use_dilation：是否对分割结果进行膨胀以获取更优检测效果。和det_db_unclip_ratio差不多。
+det_db_score_mode： "fast" 是根据polygon的外接矩形边框内的所有像素计算平均得分，"slow" 是根据原始polygon内的所有像素计算平均得分，计算速度相对较慢一些，但是更加准确一些。
+
+
+question2 ： 在测试的时候，在图像质量还可以的情况下，文字检测也检测到了，但是文字识别的时候漏了一个字
+det和rec之间的关联是这样的：det完成后，会将所有检测出的文字区域的图片作为一个batch输入到识别模型中
+该batch内的所有图片会被resize到同一高度，对于'宽高比'较低的图片，需要在右侧补0，以保证所有图片的宽度是一样的 随后该batch的图片就会被送入识别模块中生成识别结果
+补0操作引入了噪声信息，使得宽高比较低的文本（即只有几个字的文本）容易被识别错误、
+
+
 
